@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ular Tangga: Truth or Dare</title>
+    <style>
+        :root {
+            /* Theme Variables - Default (Romantic/Pastel) */
+            --bg-color: #ffe6ea;
+            --text-color: #5e3a45;
+            --board-bg: #fff0f3;
+            --cell-1: #ffccd5;
+            --cell-2: #fff0f3;
+            --accent: #ff4d6d;
+            --button-bg: #ff4d6d;
+            --button-text: white;
+            --modal-bg: rgba(255, 255, 255, 0.95);
+            --shadow: 0 4px 15px rgba(255, 77, 109, 0.2);
+            --p1-color: #00b4d8;
+            --p2-color: #ffb703;
+        }
+
+        body.dark-mode {
+            /* Dark Theme */
+            --bg-color: #1a0b2e;
+            --text-color: #e0e0e0;
+            --board-bg: #2d1b4e;
+            --cell-1: #432c7a;
+            --cell-2: #2d1b4e;
+            --accent: #764ba2;
+            --button-bg: #9d4edd;
+            --button-text: white;
+            --modal-bg: rgba(45, 27, 78, 0.95);
+            --shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; transition: background 0.3s, color 0.3s; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* HEADER */
+        header {
+            width: 100%;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(5px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        h1 { font-size: 1.2rem; font-weight: 700; }
+        .controls { display: flex; gap: 10px; }
+
+        button {
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .btn-theme { background: var(--text-color); color: var(--bg-color); }
+        .btn-reset { background: #ff4757; color: white; }
+
+        /* GAME BOARD CONTAINER */
+        .game-container {
+            position: relative;
+            width: 95vmin;
+            height: 95vmin;
+            max-width: 600px;
+            max-height: 600px;
+            margin: 20px auto;
+            background-color: var(--board-bg);
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            border: 5px solid var(--accent);
+        }
+
+        /* GRID SYSTEM */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            width: 100%;
+            height: 100%;
+        }
+
+        .cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.8rem;
+            position: relative;
+            border: 0.5px solid rgba(0,0,0,0.05);
+        }
+
+        /* Checkerboard Pattern */
+        .cell:nth-child(even) { background-color: var(--cell-1); }
+        .cell:nth-child(odd) { background-color: var(--cell-2); }
+
+        /* Special Icons */
+        .icon-layer {
+            position: absolute;
+            font-size: 1.5rem;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        .snake-line { position: absolute; stroke: #ff4757; stroke-width: 3; opacity: 0.6; pointer-events: none; z-index: 5; }
+        .ladder-line { position: absolute; stroke: #2ed573; stroke-width: 3; opacity: 0.6; pointer-events: none; z-index: 5; }
+
+        /* PLAYERS */
+        .player {
+            width: 6%; /* Diubah dari 60% menjadi 6% agar pas di dalam kotak kecil */
+            height: 6%;
+            border-radius: 50%;
+            position: absolute;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.7rem; /* Font diperkecil agar muat */
+            color: white;
+            font-weight: bold;
+            border: 2px solid white;
+        }
+        /* Menggunakan translate untuk memposisikan titik tengah token relatif terhadap titik koordinat,
+           lalu digeser sedikit agar P1 dan P2 tidak bertumpuk total */
+        .p1 { background-color: var(--p1-color); transform: translate(-75%, -75%); }
+        .p2 { background-color: var(--p2-color); transform: translate(-25%, -25%); }
+
+        /* UI CONTROLS BOTTOM */
+        .ui-panel {
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            background: var(--board-bg);
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+        }
+
+        .turn-indicator {
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 5px 15px;
+            border-radius: 10px;
+            background: rgba(0,0,0,0.05);
+        }
+
+        .dice-area {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .dice {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+            border: 2px solid var(--accent);
+        }
+
+        .btn-roll {
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            font-size: 1.2rem;
+            padding: 12px 30px;
+            border-radius: 50px;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        .btn-roll:active { transform: translateY(4px); box-shadow: none; }
+        .btn-roll:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* MODALS */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+
+        .modal-card {
+            background: var(--modal-bg);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 80%;
+            width: 350px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transform: scale(0.8);
+            transition: transform 0.3s;
+            border: 2px solid var(--accent);
+        }
+        .modal-overlay.active .modal-card { transform: scale(1); }
+
+        .modal-icon { font-size: 4rem; margin-bottom: 10px; display: block;}
+        .modal-title { font-size: 1.5rem; margin-bottom: 10px; color: var(--accent); }
+        .modal-text { margin-bottom: 20px; font-size: 1rem; line-height: 1.5; }
+        .modal-btn {
+            background: var(--button-bg); color: white; padding: 10px 25px;
+            font-size: 1rem; width: 100%;
+        }
+
+        /* SVG Overlay for Lines */
+        svg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        @media (max-width: 400px) {
+            .game-container { margin: 10px auto; }
+            h1 { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🐍 Truth/Dare Ladder</h1>
+        <div class="controls">
+            <button class="btn-theme" id="themeBtn" onclick="toggleTheme()">🌙</button>
+            <button class="btn-reset" onclick="resetGame()">↺ Reset</button>
+        </div>
+    </header>
+
+    <div class="game-container">
+        <!-- SVG lines for snakes and ladders will be drawn here -->
+        <svg id="boardLines"></svg>
+
+        <div class="board" id="board">
+            <!-- Cells generated by JS -->
+        </div>
+
+        <!-- Players -->
+        <div class="player p1" id="p1">P1</div>
+        <div class="player p2" id="p2">P2</div>
+    </div>
+
+    <div class="ui-panel">
+        <div class="turn-indicator" id="turnIndicator">Giliran: Pemain 1</div>
+        <div class="dice-area">
+            <div class="dice" id="diceBox">🎲</div>
+            <button class="btn-roll" id="rollBtn" onclick="rollDice()">ROLL!</button>
+        </div>
+    </div>
+
+    <!-- MODAL: TRUTH OR DARE -->
+    <div class="modal-overlay" id="tdModal">
+        <div class="modal-card">
+            <span class="modal-icon" id="tdIcon">🔥</span>
+            <h2 class="modal-title" id="tdTitle">DARE!</h2>
+            <p class="modal-text" id="tdText">Tantangan bebas dari pasanganmu 😈</p>
+            <button class="modal-btn" onclick="closeModal()">Lanjut Main</button>
+        </div>
+    </div>
+
+    <!-- MODAL: WINNER -->
+    <div class="modal-overlay" id="winModal">
+        <div class="modal-card">
+            <span class="modal-icon">🏆</span>
+            <h2 class="modal-title">MENANG!</h2>
+            <p class="modal-text" id="winnerText">Pemain 1 Sampai Duluan!</p>
+            <button class="modal-btn" onclick="resetGame()">Main Lagi</button>
+        </div>
+    </div>
+
+    <script>
+        /* --- GAME CONFIGURATION --- */
+        const BOARD_SIZE = 100;
+        const ROW_SIZE = 10;
+
+        // Maps: Start -> End
+        const snakes = { 16: 6, 46: 25, 49: 11, 62: 19, 64: 60, 74: 53, 89: 68, 92: 88, 95: 75, 99: 80 };
+        const ladders = { 2: 38, 7: 14, 8: 31, 15: 26, 21: 42, 28: 84, 36: 44, 51: 67, 71: 91, 78: 98 };
+
+        // Special Tiles
+        const truthTiles = [4, 12, 24, 34, 40, 56, 70, 82, 94];
+        const dareTiles = [5, 18, 32, 48, 58, 66, 76, 86, 96];
+
+        /* --- STATE --- */
+        let state = {
+            p1: 1,
+            p2: 1,
+            turn: 1, // 1 or 2
+            theme: 'light'
+        };
+
+        const boardEl = document.getElementById('board');
+        const p1El = document.getElementById('p1');
+        const p2El = document.getElementById('p2');
+        const diceBox = document.getElementById('diceBox');
+        const rollBtn = document.getElementById('rollBtn');
+        const turnInd = document.getElementById('turnIndicator');
+        const tdModal = document.getElementById('tdModal');
+        const winModal = document.getElementById('winModal');
+
+        /* --- AUDIO SYSTEM (Web Audio API) --- */
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'roll') {
+                // Clicking sound
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'move') {
+                // Blip sound
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'special') {
+                // Chime for Snake/Ladder/Modal
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.5);
+            } else if (type === 'win') {
+                // Victory melody
+                const now = audioCtx.currentTime;
+                [523, 659, 783, 1046].forEach((freq, i) => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.connect(g);
+                    g.connect(audioCtx.destination);
+                    o.frequency.value = freq;
+                    g.gain.setValueAtTime(0.1, now + i*0.1);
+                    g.gain.linearRampToValueAtTime(0, now + i*0.1 + 0.3);
+                    o.start(now + i*0.1);
+                    o.stop(now + i*0.1 + 0.3);
+                });
+            }
+        }
+
+        /* --- INITIALIZATION --- */
+        function init() {
+            createBoard();
+            drawLines();
+            loadState();
+            render();
+        }
+
+        function createBoard() {
+            boardEl.innerHTML = '';
+            // Render cells 100 to 1
+            for (let i = 100; i >= 1; i--) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.id = `cell-${i}`;
+                cell.innerText = i;
+
+                // Add Icons
+                if (snakes[i]) cell.innerHTML += `<div class="icon-layer">🐍</div>`;
+                if (ladders[i]) cell.innerHTML += `<div class="icon-layer">🪜</div>`;
+                if (truthTiles.includes(i)) cell.innerHTML += `<div class="icon-layer">💬</div>`;
+                if (dareTiles.includes(i)) cell.innerHTML += `<div class="icon-layer">🔥</div>`;
+
+                boardEl.appendChild(cell);
+            }
+        }
+
+        function getCellCenter(num) {
+            // Because flex/grid order is complex (100 is top-left), we calculate visual position
+            // We need to reverse logic: row 0 is top (nums 100-91), row 9 is bottom (nums 10-1)
+            // But CSS grid is simple flow 1-100 divs.
+            // Wait, we used 100 down to 1 in DOM order.
+            // So index 0 in DOM is cell 100.
+            const cell = document.getElementById(`cell-${num}`);
+            if (!cell) return {top:0, left:0, width:0, height:0};
+
+            // Get position relative to container
+            return {
+                top: cell.offsetTop,
+                left: cell.offsetLeft,
+                width: cell.offsetWidth,
+                height: cell.offsetHeight
+            };
+        }
+
+        function updatePlayerPos(el, pos) {
+            const metrics = getCellCenter(pos);
+            el.style.top = (metrics.top + metrics.height/2) + 'px';
+            el.style.left = (metrics.left + metrics.width/2) + 'px';
+        }
+
+        function drawLines() {
+            // Draw SVG lines connecting snakes and ladders for visual clarity
+            const svg = document.getElementById('boardLines');
+            svg.innerHTML = '';
+
+            // Helper to draw line
+            const addLine = (start, end, color) => {
+                // Delay slightly to ensure layout is done
+                setTimeout(() => {
+                    const c1 = getCellCenter(start);
+                    const c2 = getCellCenter(end);
+
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', c1.left + c1.width/2);
+                    line.setAttribute('y1', c1.top + c1.height/2);
+                    line.setAttribute('x2', c2.left + c2.width/2);
+                    line.setAttribute('y2', c2.top + c2.height/2);
+                    line.setAttribute('stroke', color);
+                    line.setAttribute('stroke-width', '4');
+                    line.setAttribute('stroke-opacity', '0.4');
+                    line.setAttribute('stroke-linecap', 'round');
+                    svg.appendChild(line);
+                }, 100);
+            };
+
+            for (const [s, e] of Object.entries(snakes)) addLine(parseInt(s), e, '#ff4757');
+            for (const [s, e] of Object.entries(ladders)) addLine(parseInt(s), e, '#2ed573');
+        }
+
+        /* --- GAME LOGIC --- */
+
+        async function rollDice() {
+            rollBtn.disabled = true;
+            playSound('roll');
+
+            // Animation
+            let roll = 1;
+            for(let i=0; i<10; i++) {
+                roll = Math.floor(Math.random() * 6) + 1;
+                diceBox.innerText = roll;
+                await new Promise(r => setTimeout(r, 100));
+            }
+
+            const currentPlayer = state.turn === 1 ? 'p1' : 'p2';
+            const currentPos = state[currentPlayer];
+            let nextPos = currentPos + roll;
+
+            if (nextPos > 100) nextPos = 100 - (nextPos - 100); // Bounce back
+
+            await moveToken(currentPlayer, currentPos, nextPos);
+        }
+
+        async function moveToken(player, from, to) {
+            const el = player === 'p1' ? p1El : p2El;
+            let current = from;
+            const direction = to > from ? 1 : -1;
+
+            // Step by step animation
+            while (current !== to) {
+                current += direction;
+                state[player] = current;
+                updatePlayerPos(el, current);
+                playSound('move');
+                await new Promise(r => setTimeout(r, 300));
+            }
+
+            checkLogic(player, current);
+        }
+
+        function checkLogic(player, pos) {
+            const el = player === 'p1' ? p1El : p2El;
+            let finalPos = pos;
+            let message = "";
+
+            // Check Win
+            if (pos === 100) {
+                playSound('win');
+                document.getElementById('winnerText').innerText = `${player === 'p1' ? 'Pemain 1' : 'Pemain 2'} Menang!`;
+                winModal.classList.add('active');
+                state[player] = 100;
+                saveState();
+                return;
+            }
+
+            // Snake or Ladder
+            if (snakes[pos]) {
+                finalPos = snakes[pos];
+                message = "Ups! Kena Ular!";
+            } else if (ladders[pos]) {
+                finalPos = ladders[pos];
+                message = "Yey! Naik Tangga!";
+            }
+
+            if (finalPos !== pos) {
+                playSound('special');
+                // Animate slide
+                setTimeout(() => {
+                    state[player] = finalPos;
+                    updatePlayerPos(el, finalPos);
+                    handleSpecialTiles(finalPos);
+                }, 500);
+            } else {
+                handleSpecialTiles(pos);
+            }
+        }
+
+        function handleSpecialTiles(pos) {
+            if (truthTiles.includes(pos)) {
+                showModal('truth');
+            } else if (dareTiles.includes(pos)) {
+                showModal('dare');
+            } else {
+                endTurn();
+            }
+        }
+
+        function showModal(type) {
+            playSound('special');
+            const icon = document.getElementById('tdIcon');
+            const title = document.getElementById('tdTitle');
+            const text = document.getElementById('tdText');
+
+            if (type === 'truth') {
+                icon.innerText = "💬";
+                title.innerText = "TRUTH!";
+                title.style.color = "#00b4d8";
+                text.innerText = "Pertanyaan jujur dari pasanganmu 😉";
+            } else {
+                icon.innerText = "🔥";
+                title.innerText = "DARE!";
+                title.style.color = "#ff4757";
+                text.innerText = "Tantangan bebas dari pasanganmu 😈";
+            }
+            tdModal.classList.add('active');
+        }
+
+        function closeModal() {
+            tdModal.classList.remove('active');
+            winModal.classList.remove('active');
+            endTurn();
+        }
+
+        function endTurn() {
+            state.turn = state.turn === 1 ? 2 : 1;
+            saveState();
+            render();
+            rollBtn.disabled = false;
+        }
+
+        /* --- STORAGE & THEME --- */
+
+        function saveState() {
+            localStorage.setItem('td_snake_data', JSON.stringify(state));
+        }
+
+        function loadState() {
+            const data = localStorage.getItem('td_snake_data');
+            if (data) {
+                state = JSON.parse(data);
+                if(state.theme === 'dark') document.body.classList.add('dark-mode');
+            }
+        }
+
+        function render() {
+            // Update Positions
+            updatePlayerPos(p1El, state.p1);
+            updatePlayerPos(p2El, state.p2);
+
+            // Update UI
+            turnInd.innerText = `Giliran: Pemain ${state.turn}`;
+            turnInd.style.color = state.turn === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+
+            const icon = state.theme === 'dark' ? '☀️' : '🌙';
+            document.getElementById('themeBtn').innerText = icon;
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            state.theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+            saveState();
+            render();
+        }
+
+        function resetGame() {
+            if(confirm("Mulai ulang permainan?")) {
+                state.p1 = 1;
+                state.p2 = 1;
+                state.turn = 1;
+                winModal.classList.remove('active');
+                saveState();
+                render();
+            }
+        }
+
+        // Handle Resize to keep tokens in place
+        window.addEventListener('resize', () => {
+            render();
+            drawLines();
+        });
+
+        // Start
+        init();
+
+    </script>
+</body>
+</html>
